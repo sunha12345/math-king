@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>수학의 왕: 중1 도전</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+            user-select: none;
+        }
+        .bounce {
+            animation: bounce 0.3s ease-in-out;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .shake {
+            animation: shake 0.3s ease-in-out;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        /* 타이머 애니메이션용 */
+        .timer-warning {
+            background-color: #ef4444 !important; /* red-500 */
+        }
+        /* 스크롤바 숨기기 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Start Screen -->
+    <div id="start-screen" class="bg-slate-800 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl border border-slate-700 relative">
+        <div class="text-6xl mb-4">👑</div>
+        <h1 class="text-3xl font-bold text-yellow-400 mb-2">수학의 왕</h1>
+        <p class="text-slate-300 mb-6 font-medium">중학교 1학년 과정 - 스피드 런</p>
+        
+        <!-- Player ID Input -->
+        <div class="mb-6">
+            <input type="text" id="player-id" placeholder="사용할 닉네임을 입력하세요" class="w-full bg-slate-900 border border-slate-600 text-white text-center rounded-xl p-3 focus:outline-none focus:border-yellow-400 transition-colors placeholder-slate-500" maxlength="10">
+            <p id="id-warning" class="text-red-400 text-sm mt-2 hidden">닉네임을 입력해주세요!</p>
+        </div>
+
+        <div class="text-left text-sm text-slate-400 mb-6 bg-slate-900 p-4 rounded-xl">
+            <p>⏱️ <b>스피드 룰:</b> 문제당 10초의 제한시간!</p>
+            <p class="mt-2">❤️ 기회는 총 3번입니다.</p>
+        </div>
+
+        <button onclick="startGame()" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-900 font-bold py-4 px-6 rounded-xl text-lg transition-transform transform hover:scale-105 active:scale-95 shadow-lg mb-4">
+            도전 시작하기
+        </button>
+
+        <!-- Leaderboard Preview Button -->
+        <button onclick="toggleLeaderboard()" class="text-sm text-yellow-400 hover:text-yellow-300 underline underline-offset-4">
+            🏆 명예의 전당 보기
+        </button>
+
+        <!-- Leaderboard Panel (Hidden by default) -->
+        <div id="leaderboard-panel" class="hidden absolute top-0 left-0 w-full h-full bg-slate-800/95 backdrop-blur-sm rounded-3xl p-6 flex flex-col z-10 border border-slate-600">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-yellow-400">🏆 명예의 전당</h3>
+                <button onclick="toggleLeaderboard()" class="text-slate-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div id="leaderboard-list" class="flex-1 overflow-y-auto no-scrollbar space-y-2 text-left">
+                <div class="text-center text-slate-400 mt-10">데이터를 불러오는 중...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="hidden bg-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-700">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex flex-col">
+                <span id="rank-icon" class="text-3xl mb-1">🧑‍🌾</span>
+                <span id="rank-title" class="text-sm font-bold text-yellow-400">농부</span>
+            </div>
+            <div class="text-center">
+                <div class="text-xs text-slate-400">SCORE</div>
+                <div id="score" class="text-2xl font-bold">0</div>
+            </div>
+            <div class="text-right flex flex-col items-end">
+                <div class="text-xs text-slate-400 mb-1">LIVES</div>
+                <div id="lives" class="text-xl">❤️❤️❤️</div>
+            </div>
+        </div>
+
+        <!-- Rank Progress -->
+        <div class="w-full bg-slate-900 rounded-full h-2 mb-4">
+            <div id="progress-bar" class="bg-yellow-400 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+        </div>
+
+        <!-- Timer Bar -->
+        <div class="w-full bg-slate-900 rounded-full h-3 mb-6 border border-slate-700 overflow-hidden">
+            <div id="timer-bar" class="bg-green-400 h-full w-full transition-all duration-100 ease-linear"></div>
+        </div>
+
+        <!-- Question Area -->
+        <div id="question-container" class="bg-slate-700/50 p-6 rounded-2xl mb-8 min-h-[120px] flex items-center justify-center border border-slate-600 relative">
+            <h2 id="question-text" class="text-xl md:text-2xl font-bold text-center leading-relaxed">문제 로딩 중...</h2>
+        </div>
+
+        <!-- Options Grid -->
+        <div class="grid grid-cols-2 gap-4" id="options-container">
+            <!-- Buttons dynamically generated here -->
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over-screen" class="hidden bg-slate-800 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl border border-slate-700">
+        <div id="final-icon" class="text-6xl mb-4">🪦</div>
+        <h2 id="game-over-title" class="text-2xl font-bold text-white mb-2">게임 오버</h2>
+        <p class="text-slate-300 mb-6">당신의 최종 계급은 <span id="final-rank" class="text-yellow-400 font-bold text-xl"></span> 입니다.</p>
+        
+        <div class="bg-slate-900 p-6 rounded-xl mb-6">
+            <div class="text-sm text-slate-400">최종 점수</div>
+            <div id="final-score" class="text-4xl font-bold text-white mt-1">0</div>
+        </div>
+        
+        <p id="save-status" class="text-sm text-green-400 mb-6 h-5"></p>
+
+        <button onclick="resetToStart()" class="w-full bg-slate-600 hover:bg-slate-500 text-white font-bold py-4 px-6 rounded-xl text-lg transition-transform transform hover:scale-105 active:scale-95 mb-4">
+            처음으로 돌아가기
+        </button>
+        <button onclick="startGame()" class="w-full bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-slate-900 font-bold py-4 px-6 rounded-xl text-lg transition-transform transform hover:scale-105 active:scale-95 shadow-lg">
+            다시 플레이
+        </button>
+    </div>
+
+    <!-- Firebase & Game Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Configuration (환경 변수 사용)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'math-king-speed';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        
+        let db = null;
+        let auth = null;
+        let currentUser = null;
+        let leaderboardData = [];
+
+        // Initialize Firebase if available
+        if (firebaseConfig) {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            const initAuth = async () => {
+                try {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    currentUser = auth.currentUser;
+                    setupLeaderboardListener();
+                } catch (error) {
+                    console.error("Auth error:", error);
+                }
+            };
+            initAuth();
+        }
+
+        function setupLeaderboardListener() {
+            if (!currentUser || !db) return;
+            const lbRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+            
+            // 단순 쿼리로 전체 데이터를 가져와서 메모리에서 정렬 (규칙 2 준수)
+            onSnapshot(lbRef, (snapshot) => {
+                const data = [];
+                snapshot.forEach((doc) => {
+                    data.push({ id: doc.id, ...doc.data() });
+                });
+                
+                // 점수 내림차순 정렬
+                data.sort((a, b) => b.score - a.score);
+                leaderboardData = data.slice(0, 50); // 상위 50명만 유지
+                renderLeaderboard();
+            }, (error) => {
+                console.error("Leaderboard fetch error:", error);
+            });
+        }
+
+        async function saveScoreToLeaderboard(playerName, score, rankTitle) {
+            if (!currentUser || !db || score === 0) return;
+            
+            const statusEl = document.getElementById('save-status');
+            statusEl.innerText = "기록 저장 중...";
+            
+            try {
+                const lbRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+                await addDoc(lbRef, {
+                    playerName: playerName,
+                    score: score,
+                    rank: rankTitle,
+                    timestamp: Date.now(),
+                    userId: currentUser.uid
+                });
+                statusEl.innerText = "명예의 전당에 기록되었습니다!";
+            } catch (error) {
+                console.error("Error saving score:", error);
+                statusEl.innerText = "기록 저장에 실패했습니다.";
+                statusEl.classList.replace('text-green-400', 'text-red-400');
+            }
+        }
+
+        function renderLeaderboard() {
+            const listEl = document.getElementById('leaderboard-list');
+            if (leaderboardData.length === 0) {
+                listEl.innerHTML = '<div class="text-center text-slate-400 mt-10">아직 기록이 없습니다. 첫 번째 랭커가 되어보세요!</div>';
+                return;
+            }
+
+            listEl.innerHTML = leaderboardData.map((entry, index) => `
+                <div class="flex justify-between items-center bg-slate-700/50 p-3 rounded-lg border border-slate-600">
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold w-6 text-center ${index === 0 ? 'text-yellow-400' : index === 1 ? 'text-slate-300' : index === 2 ? 'text-amber-600' : 'text-slate-500'}">${index + 1}</span>
+                        <span class="font-medium truncate max-w-[120px]">${entry.playerName}</span>
+                        <span class="text-xs text-slate-400 px-2 py-1 bg-slate-800 rounded-md">${entry.rank}</span>
+                    </div>
+                    <div class="font-bold text-yellow-400">${entry.score}점</div>
+                </div>
+            `).join('');
+        }
+
+        window.toggleLeaderboard = function() {
+            const panel = document.getElementById('leaderboard-panel');
+            panel.classList.toggle('hidden');
+        };
+
+        // --- Game Logic ---
+        let state = {
+            playerName: '',
+            score: 0,
+            lives: 3,
+            currentQuestion: null,
+            rankIndex: 0,
+            timer: 0,
+            timerInterval: null,
+            maxTime: 100 // 10 seconds in 100ms ticks
+        };
+
+        const ranks = [
+            { title: "농부", icon: "🧑‍🌾", threshold: 0 },
+            { title: "대장장이", icon: "🔨", threshold: 50 },
+            { title: "상인", icon: "💰", threshold: 120 },
+            { title: "기사", icon: "⚔️", threshold: 200 },
+            { title: "영주", icon: "🏰", threshold: 300 },
+            { title: "국왕", icon: "👑", threshold: 500 }
+        ];
+
+        const screens = {
+            start: document.getElementById('start-screen'),
+            game: document.getElementById('game-screen'),
+            gameOver: document.getElementById('game-over-screen')
+        };
+        const els = {
+            score: document.getElementById('score'),
+            lives: document.getElementById('lives'),
+            rankIcon: document.getElementById('rank-icon'),
+            rankTitle: document.getElementById('rank-title'),
+            progressBar: document.getElementById('progress-bar'),
+            timerBar: document.getElementById('timer-bar'),
+            question: document.getElementById('question-text'),
+            options: document.getElementById('options-container'),
+            qContainer: document.getElementById('question-container'),
+            finalRank: document.getElementById('final-rank'),
+            finalScore: document.getElementById('final-score'),
+            finalIcon: document.getElementById('final-icon'),
+            gameOverTitle: document.getElementById('game-over-title'),
+            playerId: document.getElementById('player-id'),
+            idWarning: document.getElementById('id-warning')
+        };
+
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex !== 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        function generateQuestion() {
+            const types = ['integer', 'expression', 'equation', 'prime'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            let qText = "";
+            let correct = 0;
+
+            if (type === 'integer') {
+                const ops = ['+', '-', '×'];
+                const op = ops[Math.floor(Math.random() * 3)];
+                let a = Math.floor(Math.random() * 21) - 10;
+                let b = Math.floor(Math.random() * 21) - 10;
+                
+                if (op === '+') correct = a + b;
+                else if (op === '-') correct = a - b;
+                else if (op === '×') {
+                    a = Math.floor(Math.random() * 11) - 5;
+                    b = Math.floor(Math.random() * 11) - 5;
+                    correct = a * b;
+                }
+                qText = `(${a}) ${op} (${b}) = ?`;
+                
+            } else if (type === 'expression') {
+                const a = Math.floor(Math.random() * 4) + 2; 
+                const b = Math.floor(Math.random() * 11) - 5; 
+                const x = Math.floor(Math.random() * 7) - 3; 
+                correct = a * x + b;
+                const bStr = b === 0 ? '' : (b > 0 ? `+ ${b}` : `- ${Math.abs(b)}`);
+                qText = `x = ${x} 일 때,<br><span class="text-yellow-300">${a}x ${bStr}</span> 의 값은?`;
+                
+            } else if (type === 'equation') {
+                const x = Math.floor(Math.random() * 11) - 5;
+                const a = Math.floor(Math.random() * 4) + 2;
+                const b = Math.floor(Math.random() * 11) - 5;
+                const c = a * x + b;
+                const bStr = b === 0 ? '' : (b > 0 ? `+ ${b}` : `- ${Math.abs(b)}`);
+                qText = `방정식 <span class="text-yellow-300">${a}x ${bStr} = ${c}</span><br>의 해 x는?`;
+                correct = x;
+                
+            } else if (type === 'prime') {
+                const subType = Math.floor(Math.random() * 2);
+                if (subType === 0) { 
+                    const base = Math.floor(Math.random() * 4) + 2;
+                    const exp = Math.floor(Math.random() * 3) + 2; 
+                    correct = Math.pow(base, exp);
+                    qText = `${base}<sup>${exp}</sup> 의 값은?`;
+                } else { 
+                    const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23];
+                    const composites = [4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20, 21, 25];
+                    correct = primes[Math.floor(Math.random() * primes.length)];
+                    let w1 = composites[Math.floor(Math.random() * composites.length)];
+                    let w2 = composites[Math.floor(Math.random() * composites.length)];
+                    let w3 = composites[Math.floor(Math.random() * composites.length)];
+                    while(w1 === w2) w2 = composites[Math.floor(Math.random() * composites.length)];
+                    while(w3 === w1 || w3 === w2) w3 = composites[Math.floor(Math.random() * composites.length)];
+                    
+                    qText = `다음 중 <span class="text-yellow-300">'소수(Prime)'</span>인 것은?`;
+                    return { question: qText, correct: correct, options: shuffle([correct, w1, w2, w3]) };
+                }
+            }
+
+            let optionsSet = new Set();
+            optionsSet.add(correct);
+            while(optionsSet.size < 4) {
+                let offset = Math.floor(Math.random() * 11) - 5;
+                if(offset === 0) offset = 2; 
+                optionsSet.add(correct + offset);
+            }
+            
+            return { 
+                question: qText, 
+                correct: correct, 
+                options: shuffle(Array.from(optionsSet)) 
+            };
+        }
+
+        function switchScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            screens[screenName].classList.remove('hidden');
+        }
+
+        function updateUI() {
+            els.score.innerText = state.score;
+            els.lives.innerText = '❤️'.repeat(state.lives) + '🖤'.repeat(3 - state.lives);
+            
+            let currentRank = ranks[0];
+            for (let i = ranks.length - 1; i >= 0; i--) {
+                if (state.score >= ranks[i].threshold) {
+                    currentRank = ranks[i];
+                    state.rankIndex = i;
+                    break;
+                }
+            }
+            
+            if (els.rankTitle.innerText !== currentRank.title) {
+                els.rankIcon.classList.add('bounce');
+                setTimeout(() => els.rankIcon.classList.remove('bounce'), 300);
+            }
+
+            els.rankIcon.innerText = currentRank.icon;
+            els.rankTitle.innerText = currentRank.title;
+
+            let progress = 100;
+            if (state.rankIndex < ranks.length - 1) {
+                const prevThresh = ranks[state.rankIndex].threshold;
+                const nextThresh = ranks[state.rankIndex + 1].threshold;
+                progress = ((state.score - prevThresh) / (nextThresh - prevThresh)) * 100;
+            }
+            els.progressBar.style.width = `${progress}%`;
+        }
+
+        function startTimer() {
+            clearInterval(state.timerInterval);
+            state.timer = state.maxTime;
+            updateTimerUI();
+
+            state.timerInterval = setInterval(() => {
+                state.timer--;
+                updateTimerUI();
+
+                if (state.timer <= 0) {
+                    clearInterval(state.timerInterval);
+                    handleTimeout();
+                }
+            }, 100); // 100ms 씩 감소
+        }
+
+        function updateTimerUI() {
+            const percentage = (state.timer / state.maxTime) * 100;
+            els.timerBar.style.width = `${percentage}%`;
+            
+            if (percentage > 50) {
+                els.timerBar.className = "h-full w-full transition-all duration-100 ease-linear bg-green-400";
+            } else if (percentage > 20) {
+                els.timerBar.className = "h-full w-full transition-all duration-100 ease-linear bg-yellow-400";
+            } else {
+                els.timerBar.className = "h-full w-full transition-all duration-100 ease-linear timer-warning";
+            }
+        }
+
+        function loadNextQuestion() {
+            state.currentQuestion = generateQuestion();
+            els.question.innerHTML = state.currentQuestion.question;
+            
+            els.options.innerHTML = '';
+            state.currentQuestion.options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = "bg-slate-700 hover:bg-slate-600 active:bg-slate-500 text-white font-bold py-5 px-4 rounded-xl text-xl transition-colors border-b-4 border-slate-800 active:border-b-0 active:translate-y-1";
+                btn.innerText = opt;
+                btn.onclick = () => handleAnswer(opt, btn);
+                els.options.appendChild(btn);
+            });
+
+            startTimer();
+        }
+
+        function handleTimeout() {
+            processWrongAnswer(null);
+        }
+
+        function handleAnswer(selected, btnElement) {
+            clearInterval(state.timerInterval); // Stop timer
+
+            const allBtns = els.options.querySelectorAll('button');
+            allBtns.forEach(b => b.disabled = true);
+
+            if (selected === state.currentQuestion.correct) {
+                // 시간 보너스 점수 (남은 시간 비율에 따라 10 ~ 15점 부여)
+                const timeBonus = Math.floor((state.timer / state.maxTime) * 5);
+                state.score += (10 + timeBonus);
+                
+                btnElement.classList.remove('bg-slate-700', 'hover:bg-slate-600', 'border-slate-800');
+                btnElement.classList.add('bg-green-500', 'border-green-700');
+                
+                els.qContainer.classList.add('bounce');
+                setTimeout(() => {
+                    els.qContainer.classList.remove('bounce');
+                    updateUI();
+                    
+                    if (state.score >= ranks[ranks.length - 1].threshold) {
+                        endGame(true);
+                    } else {
+                        loadNextQuestion();
+                    }
+                }, 400);
+
+            } else {
+                processWrongAnswer(btnElement);
+            }
+        }
+
+        function processWrongAnswer(selectedBtnElement) {
+            state.lives -= 1;
+            
+            const allBtns = els.options.querySelectorAll('button');
+            allBtns.forEach(b => {
+                b.disabled = true;
+                if(parseInt(b.innerText) === state.currentQuestion.correct) {
+                    b.classList.remove('bg-slate-700', 'border-slate-800');
+                    b.classList.add('bg-green-500', 'border-green-700');
+                }
+            });
+
+            if (selectedBtnElement) {
+                selectedBtnElement.classList.remove('bg-slate-700', 'hover:bg-slate-600', 'border-slate-800');
+                selectedBtnElement.classList.add('bg-red-500', 'border-red-700');
+            }
+
+            els.qContainer.classList.add('shake');
+            setTimeout(() => {
+                els.qContainer.classList.remove('shake');
+                updateUI();
+                if (state.lives <= 0) {
+                    endGame(false);
+                } else {
+                    loadNextQuestion();
+                }
+            }, 800);
+        }
+
+        window.startGame = function() {
+            const nameInput = els.playerId.value.trim();
+            if (!nameInput) {
+                els.idWarning.classList.remove('hidden');
+                els.playerId.focus();
+                return;
+            }
+            els.idWarning.classList.add('hidden');
+            state.playerName = nameInput;
+            
+            state.score = 0;
+            state.lives = 3;
+            state.rankIndex = 0;
+            updateUI();
+            loadNextQuestion();
+            switchScreen('game');
+        };
+
+        window.resetToStart = function() {
+            document.getElementById('save-status').innerText = "";
+            document.getElementById('save-status').classList.remove('text-red-400');
+            document.getElementById('save-status').classList.add('text-green-400');
+            switchScreen('start');
+        };
+
+        function endGame(isWin) {
+            clearInterval(state.timerInterval);
+            switchScreen('gameOver');
+            const finalRank = ranks[state.rankIndex];
+            
+            els.finalRank.innerText = finalRank.title;
+            els.finalIcon.innerText = finalRank.icon;
+            els.finalScore.innerText = state.score;
+            
+            if (isWin) {
+                els.gameOverTitle.innerText = "위대한 국왕 탄생!";
+                els.gameOverTitle.classList.add('text-yellow-400');
+            } else {
+                els.gameOverTitle.innerText = "게임 오버";
+                els.gameOverTitle.classList.remove('text-yellow-400');
+                els.gameOverTitle.classList.add('text-white');
+            }
+
+            // Save to Firebase
+            saveScoreToLeaderboard(state.playerName, state.score, finalRank.title);
+        }
+    </script>
+</body>
+</html>
