@@ -311,20 +311,43 @@
             score: 0,
             lives: 3,
             currentQuestion: null,
-            rankIndex: 0,
+            level: 1,
             timer: 0,
             timerInterval: null,
             maxTime: 100
         };
 
-        const ranks = [
-            { title: "농부", icon: "🧑‍🌾", threshold: 0 },
-            { title: "기사", icon: "⚔️", threshold: 60 },
-            { title: "자작", icon: "🛡️", threshold: 140 },
-            { title: "백작", icon: "🏰", threshold: 240 },
-            { title: "공작", icon: "👑", threshold: 360 },
-            { title: "국왕", icon: "🤴", threshold: 520 }
-        ];
+        // 점수에 따라 무한대로 계급을 생성하는 함수
+        function getRank(score) {
+            const level = Math.floor(score / 100);
+            const baseRanks = [
+                { t: "농부", i: "🧑‍🌾" },
+                { t: "기사", i: "⚔️" },
+                { t: "자작", i: "🛡️" },
+                { t: "백작", i: "🏰" },
+                { t: "공작", i: "👑" },
+                { t: "국왕", i: "🤴" },
+                { t: "황제", i: "🐉" },
+                { t: "신", i: "✨" }
+            ];
+            
+            if (level < baseRanks.length) {
+                return { 
+                    title: baseRanks[level].t, 
+                    icon: baseRanks[level].i, 
+                    level: level + 1,
+                    threshold: level * 100
+                };
+            } else {
+                const over = level - baseRanks.length + 1;
+                return { 
+                    title: `초월 ${over}단계`, 
+                    icon: "🌌", 
+                    level: level + 1,
+                    threshold: level * 100
+                };
+            }
+        }
 
         const screens = {
             start: document.getElementById('start-screen'),
@@ -368,8 +391,8 @@
             let qText = "";
             let correct = 0;
             
-            // 난이도 변수 (계급이 오를수록 1 ~ 6단계로 증가)
-            const level = state.rankIndex + 1;
+            // 난이도 변수 (계급 레벨에 비례하여 무한 증가)
+            const level = state.level;
 
             if (type === 'integer') {
                 const ops = ['+', '-', '×'];
@@ -467,16 +490,10 @@
 
         function updateUI() {
             els.score.innerText = state.score;
-            els.lives.innerText = '❤️'.repeat(state.lives) + '🖤'.repeat(3 - state.lives);
+            els.lives.innerText = '❤️'.repeat(state.lives) + '🖤'.repeat(Math.max(0, 3 - state.lives));
             
-            let currentRank = ranks[0];
-            for (let i = ranks.length - 1; i >= 0; i--) {
-                if (state.score >= ranks[i].threshold) {
-                    currentRank = ranks[i];
-                    state.rankIndex = i;
-                    break;
-                }
-            }
+            const currentRank = getRank(state.score);
+            state.level = currentRank.level;
             
             if (els.rankTitle.innerText !== currentRank.title) {
                 els.rankIcon.classList.add('bounce');
@@ -486,17 +503,17 @@
             els.rankIcon.innerText = currentRank.icon;
             els.rankTitle.innerText = currentRank.title;
 
-            let progress = 100;
-            if (state.rankIndex < ranks.length - 1) {
-                const prevThresh = ranks[state.rankIndex].threshold;
-                const nextThresh = ranks[state.rankIndex + 1].threshold;
-                progress = ((state.score - prevThresh) / (nextThresh - prevThresh)) * 100;
-            }
+            // 진행도는 100점 단위로 계산
+            const progress = ((state.score - currentRank.threshold) / 100) * 100;
             els.progressBar.style.width = `${progress}%`;
         }
 
         function startTimer() {
             clearInterval(state.timerInterval);
+            
+            // 레벨이 오를수록 제한시간 감소 (최소 3초까지 감소)
+            // 기본 10초(100), 1레벨당 0.4초씩 줄어듦
+            state.maxTime = Math.max(30, 100 - (state.level - 1) * 4);
             state.timer = state.maxTime;
             updateTimerUI();
 
@@ -562,11 +579,8 @@
                     els.qContainer.classList.remove('bounce');
                     updateUI();
                     
-                    if (state.score >= ranks[ranks.length - 1].threshold) {
-                        endGame(true);
-                    } else {
-                        loadNextQuestion();
-                    }
+                    // 무한 모드이므로 끝없이 다음 문제를 로드합니다.
+                    loadNextQuestion();
                 }, 400);
 
             } else {
@@ -596,7 +610,7 @@
                 els.qContainer.classList.remove('shake');
                 updateUI();
                 if (state.lives <= 0) {
-                    endGame(false);
+                    endGame();
                 } else {
                     loadNextQuestion();
                 }
@@ -615,7 +629,7 @@
             
             state.score = 0;
             state.lives = 3;
-            state.rankIndex = 0;
+            state.level = 1;
             updateUI();
             loadNextQuestion();
             switchScreen('game');
@@ -625,23 +639,18 @@
             switchScreen('start');
         };
 
-        function endGame(isWin) {
+        function endGame() {
             clearInterval(state.timerInterval);
             switchScreen('gameOver');
-            const finalRank = ranks[state.rankIndex];
+            const finalRank = getRank(state.score);
             
             els.playerDisplay.innerText = state.playerName;
             els.finalRank.innerText = finalRank.title;
             els.finalIcon.innerText = finalRank.icon;
             els.finalScore.innerText = state.score;
             
-            if (isWin) {
-                els.gameOverTitle.innerText = "🎉 위대한 국왕 등극!";
-                els.gameOverTitle.className = "text-2xl font-bold text-yellow-400 mb-2";
-            } else {
-                els.gameOverTitle.innerText = "게임 종료";
-                els.gameOverTitle.className = "text-2xl font-bold text-white mb-2";
-            }
+            els.gameOverTitle.innerText = "게임 종료";
+            els.gameOverTitle.className = "text-2xl font-bold text-white mb-2";
         }
     </script>
 </body>
