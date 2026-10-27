@@ -367,34 +367,49 @@
             const type = types[Math.floor(Math.random() * types.length)];
             let qText = "";
             let correct = 0;
+            
+            // 난이도 변수 (계급이 오를수록 1 ~ 6단계로 증가)
+            const level = state.rankIndex + 1;
 
             if (type === 'integer') {
                 const ops = ['+', '-', '×'];
                 const op = ops[Math.floor(Math.random() * 3)];
-                let a = Math.floor(Math.random() * 21) - 10;
-                let b = Math.floor(Math.random() * 21) - 10;
+                
+                // 레벨이 오를수록 덧셈/뺄셈/곱셈의 숫자 범위가 커짐
+                let range = 10 + (level * 5); 
+                let a = Math.floor(Math.random() * (range * 2 + 1)) - range;
+                let b = Math.floor(Math.random() * (range * 2 + 1)) - range;
                 
                 if (op === '+') correct = a + b;
                 else if (op === '-') correct = a - b;
                 else if (op === '×') {
-                    a = Math.floor(Math.random() * 11) - 5;
-                    b = Math.floor(Math.random() * 11) - 5;
+                    let mRange = 4 + (level * 2);
+                    a = Math.floor(Math.random() * (mRange * 2 + 1)) - mRange;
+                    b = Math.floor(Math.random() * (mRange * 2 + 1)) - mRange;
                     correct = a * b;
                 }
                 qText = `(${a}) ${op} (${b}) = ?`;
                 
             } else if (type === 'expression') {
-                const a = Math.floor(Math.random() * 4) + 2; 
-                const b = Math.floor(Math.random() * 11) - 5; 
-                const x = Math.floor(Math.random() * 7) - 3; 
+                // 식별자 및 대입 값 범위 증가
+                const a = Math.floor(Math.random() * (level * 2 + 2)) + 2; 
+                const bRange = 5 + level * 3;
+                const b = Math.floor(Math.random() * (bRange * 2 + 1)) - bRange; 
+                const xRange = 3 + level;
+                const x = Math.floor(Math.random() * (xRange * 2 + 1)) - xRange; 
+                
                 correct = a * x + b;
                 const bStr = b === 0 ? '' : (b > 0 ? `+ ${b}` : `- ${Math.abs(b)}`);
                 qText = `x = ${x} 일 때,<br><span class="text-yellow-300 font-semibold">${a}x ${bStr}</span> 의 값은?`;
                 
             } else if (type === 'equation') {
-                const x = Math.floor(Math.random() * 11) - 5;
-                const a = Math.floor(Math.random() * 4) + 2;
-                const b = Math.floor(Math.random() * 11) - 5;
+                // 방정식의 해와 상수항 범위 증가
+                const xRange = 3 + level * 2;
+                const x = Math.floor(Math.random() * (xRange * 2 + 1)) - xRange;
+                const a = Math.floor(Math.random() * (level * 2 + 1)) + 2;
+                const bRange = 5 + level * 2;
+                const b = Math.floor(Math.random() * (bRange * 2 + 1)) - bRange;
+                
                 const c = a * x + b;
                 const bStr = b === 0 ? '' : (b > 0 ? `+ ${b}` : `- ${Math.abs(b)}`);
                 qText = `방정식 <span class="text-yellow-300 font-semibold">${a}x ${bStr} = ${c}</span><br>의 해 x는?`;
@@ -403,19 +418,25 @@
             } else if (type === 'prime') {
                 const subType = Math.floor(Math.random() * 2);
                 if (subType === 0) { 
-                    const base = Math.floor(Math.random() * 4) + 2;
-                    const exp = Math.floor(Math.random() * 3) + 2; 
+                    // 거듭제곱의 밑과 지수 증가
+                    const base = Math.floor(Math.random() * (2 + level)) + 2;
+                    const exp = Math.floor(Math.random() * (2 + Math.floor(level/2))) + 2; 
                     correct = Math.pow(base, exp);
                     qText = `<span class="text-yellow-300 font-semibold">${base}<sup>${exp}</sup></span> 의 값은?`;
                 } else { 
-                    const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23];
-                    const composites = [4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20, 21, 25];
-                    correct = primes[Math.floor(Math.random() * primes.length)];
-                    let w1 = composites[Math.floor(Math.random() * composites.length)];
-                    let w2 = composites[Math.floor(Math.random() * composites.length)];
-                    let w3 = composites[Math.floor(Math.random() * composites.length)];
-                    while(w1 === w2) w2 = composites[Math.floor(Math.random() * composites.length)];
-                    while(w3 === w1 || w3 === w2) w3 = composites[Math.floor(Math.random() * composites.length)];
+                    // 레벨이 오를수록 어려운 소수와 합성수가 등장
+                    const allPrimes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47];
+                    const allComposites = [4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20, 21, 25, 27, 33, 35, 39, 45, 49];
+                    
+                    const pMaxIndex = Math.min(4 + level * 2, allPrimes.length);
+                    const cMaxIndex = Math.min(6 + level * 2, allComposites.length);
+                    
+                    correct = allPrimes[Math.floor(Math.random() * pMaxIndex)];
+                    let w1 = allComposites[Math.floor(Math.random() * cMaxIndex)];
+                    let w2 = allComposites[Math.floor(Math.random() * cMaxIndex)];
+                    let w3 = allComposites[Math.floor(Math.random() * cMaxIndex)];
+                    while(w1 === w2) w2 = allComposites[Math.floor(Math.random() * cMaxIndex)];
+                    while(w3 === w1 || w3 === w2) w3 = allComposites[Math.floor(Math.random() * cMaxIndex)];
                     
                     qText = `다음 중 <span class="text-yellow-300 font-semibold">'소수(Prime Number)'</span>인 것은?`;
                     return { question: qText, correct: correct, options: shuffle([correct, w1, w2, w3]) };
@@ -425,7 +446,9 @@
             let optionsSet = new Set();
             optionsSet.add(correct);
             while(optionsSet.size < 4) {
-                let offset = Math.floor(Math.random() * 11) - 5;
+                // 오답 보기의 함정 범위도 레벨에 맞춰 증가
+                let offsetRange = 5 + level * 2;
+                let offset = Math.floor(Math.random() * (offsetRange * 2 + 1)) - offsetRange;
                 if(offset === 0) offset = 2; 
                 optionsSet.add(correct + offset);
             }
